@@ -5,6 +5,7 @@ var concat = require('gulp-concat');
 var header = require('gulp-header');
 var footer = require('gulp-footer');
 var htmlJsStr = require('js-string-escape');
+var minify = require('html-minifier').minify;
 
 /**
  * "constants"
@@ -31,6 +32,8 @@ var MODULE_TEMPLATES = {
   }
 
 };
+
+var useMinify = false;
 
 /**
  * Add files to templateCache.
@@ -66,13 +69,21 @@ function templateCacheFiles(root, base) {
       url = url.replace(/\\/g, '/');
     }
 
+    var contents = htmlJsStr(file.contents);
+
+    if (useMinify) {
+      contents = contents
+        .replace(/\\n|\\r/g, '')
+        .replace(/\s{2,}/g, ' ')
+    }
+
     /**
      * Create buffer
      */
 
     file.contents = new Buffer(gutil.template(template, {
       url: url,
-      contents: htmlJsStr(file.contents),
+      contents: contents,
       file: file
     }));
 
@@ -152,6 +163,10 @@ function templateCache(filename, options) {
     options.moduleSystem = options.moduleSystem.toLowerCase();
   }
 
+  if (options.minify) {
+    useMinify = true;
+  }
+
   /**
    * Prepare header / footer
    */
@@ -165,7 +180,7 @@ function templateCache(filename, options) {
    */
 
   return es.pipeline(
-    templateCacheStream(options.root || '', options.base),
+    templateCacheStream(options.root || '', options.base, options.minify || false),
     concat(filename),
     header(templateHeader, {
       module: options.module || DEFAULT_MODULE,
